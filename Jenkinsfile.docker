@@ -1,0 +1,53 @@
+pipeline {
+  agent any
+  
+  environment {
+    DOCKER_IMAGE_NAME = 'pipedocker' // Customize this with your desired image name
+    DOCKER_IMAGE_TAG = "v${env.BUILD_ID}" // You can use the build number as a tag or customize it
+    DOCKER_REGISTRY_CREDENTIALS = credentials('aniedzwiedz-dockerHub') 
+  }
+  
+  parameters {
+    booleanParam(
+      name: 'pushToRepo',
+      defaultValue: false,
+      description: 'Push the image to the custom Docker repository'
+    )
+  }
+  
+  stages {
+    stage('Checkout') {
+      steps {
+        // Clone the Git repository
+        git branch: 'main', credentialsId: 'aniedzwiedz', url: 'git@github.com:aniedzwiedz/pipeDocker.git'
+      }
+    }
+    
+    stage('Build') {
+      steps {
+        // Build the Maven project
+        sh 'echo teee'
+      }
+    }
+    
+    stage('Dockerize') {
+      steps {
+        script {
+          // Build the Docker image from the Dockerfile
+          def dockerImage = docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}", "-f Dockerfile .")
+          
+          // Tag the Docker image with 'latest' for the default tag
+           dockerImage.tag("${DOCKER_IMAGE_NAME}.latest")
+        //   dockerImage.tag("pipedocker.latest1")
+          // Check if the checkbox button is selected
+          if (params.pushToRepo) {
+            // Push the image to the custom Docker repository
+            docker.withRegistry('https://registry.hub.docker.com', 'aniedzwiedz-dockerHub') {
+              dockerImage.push()
+            }
+          }
+        }
+      }
+    }
+  }
+}
